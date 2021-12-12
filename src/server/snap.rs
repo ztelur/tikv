@@ -133,7 +133,7 @@ pub fn send_snap(
         let (mgr, key) = (mgr.clone(), key.clone());
         DeferContext::new(move || mgr.deregister(&key, &SnapEntry::Sending))
     };
-
+    // 用 Snapshot 元信息从 SnapManager取到待发送的快照数据
     let s = box_try!(mgr.get_snapshot_for_sending(&key));
     if !s.exists() {
         return Err(box_err!("missing snap file: {:?}", s.path()));
@@ -143,14 +143,14 @@ pub fn send_snap(
     let mut chunks = {
         let mut first_chunk = SnapshotChunk::default();
         first_chunk.set_message(msg);
-
+        // 然后将 RaftMessage和 Snap一起封装进 SnapChunk结构，
         SnapChunk {
             first: Some(first_chunk),
             snap: s,
             remain_bytes: total_size as usize,
         }
     };
-
+    // 全新的 gRPC 连接及一个 Snapshot stream 并将 SnapChunk写入
     let cb = ChannelBuilder::new(env)
         .stream_initial_window_size(cfg.grpc_stream_initial_window_size.0 as i32)
         .keepalive_time(cfg.grpc_keepalive_time.0)
@@ -266,6 +266,9 @@ fn recv_snap<R: RaftStoreRouter<impl KvEngine> + 'static>(
     snap_mgr: SnapManager,
     raft_router: R,
 ) -> impl Future<Output = Result<()>> {
+    // 第一个消息（其中包含有 RaftMessage）被用来创建 RecvSnapContext对象，
+    // 其后的每个 chunk 收取后都依次写入文件，最后调用 context.finish()把之前保存的
+    // RaftMessage发送给 raftstore完成整个接收过程。
     let recv_task = async move {
         let mut stream = stream.map_err(Error::from);
         let head = stream.next().await.transpose()?;
@@ -410,6 +413,7 @@ where
                 let raft_router = self.raft_router.clone();
                 let recving_count = Arc::clone(&self.recving_count);
                 recving_count.fetch_add(1, Ordering::SeqCst);
+                // 通过调用 send_snap()或 recv_snap()生成一个 future 对象，并将其交给 FuturePool异步执行。
                 let task = async move {
                     let result = recv_snap(stream, sink, snap_mgr, raft_router).await;
                     recving_count.fetch_sub(1, Ordering::SeqCst);
@@ -437,7 +441,7 @@ where
                 let security_mgr = Arc::clone(&self.security_mgr);
                 let sending_count = Arc::clone(&self.sending_count);
                 sending_count.fetch_add(1, Ordering::SeqCst);
-
+                // 通过调用 send_snap()或 recv_snap()生成一个 future 对象，并将其交给 FuturePool异步执行
                 let send_task = send_snap(env, mgr, security_mgr, &self.cfg.clone(), &addr, msg);
                 let task = async move {
                     let res = match send_task {

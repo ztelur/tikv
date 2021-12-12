@@ -17,11 +17,17 @@ const WAITING_LIST_MAX_CAPACITY: usize = 16;
 /// Latches are indexed by slot IDs. The keys of a command are hashed into unsigned numbers,
 /// then the command is added to the waiting queues of the latches.
 ///
+/// 为了防止多个请求同时对同一个 key 进行写操作，请求在写这个 key
+/// 之前必须先获取这个 key 的内存锁。为了和事务中的锁进行区分，
+///
+/// 我们称这个内存锁为 latch
+/// 每个 Latch 内部包含一个等待队列，没有拿到 latch 的请求按先后顺序插入到等待队列中，队首的请求被认为拿到了该 latch。
 /// If command A is ahead of command B in one latch, it must be ahead of command B in all the
 /// overlapping latches. This is an invariant ensured by the `gen_lock`, `acquire` and `release`.
 #[derive(Clone)]
 struct Latch {
     // store hash value of the key and command ID which requires this key.
+    // 每个 Latch 内部包含一个等待队列，没有拿到 latch 的请求按先后顺序插入到等待队列中，队首的请求被认为拿到了该 latch。
     pub waiting: VecDeque<Option<(u64, u64)>>,
 }
 

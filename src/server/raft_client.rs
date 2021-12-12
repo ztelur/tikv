@@ -365,7 +365,7 @@ where
             to_store_id,
         }
     }
-
+    // 发送 snapshort https://pingcap.com/zh/blog/tikv-source-code-reading-10
     fn send_snapshot_sock(&self, msg: RaftMessage) {
         let rep = self.new_snapshot_reporter(&msg);
         let cb = Box::new(move |res: Result<_, _>| {
@@ -375,6 +375,8 @@ where
                 rep.report(SnapshotStatus::Finish);
             }
         });
+        // 把对应的 RaftMessage包装成一个 SnapTask::Send任务，
+        // 并将其交给独立的 snap-worker去处理 的 RaftMessage只包含 Snapshot 的元信息，而不包括真正的快照数据
         if let Err(e) = self.snap_scheduler.schedule(SnapTask::Send {
             addr: self.addr.clone(),
             msg,
@@ -396,6 +398,7 @@ where
                 Some(msg) => msg,
                 None => return,
             };
+            // 发送 TiKV 的 snapshort 数据
             if msg.get_message().has_snapshot() {
                 self.send_snapshot_sock(msg);
                 continue;
@@ -765,6 +768,8 @@ struct CachedQueue {
 /// }
 /// raft_client.flush();
 /// ```
+/// RaftClient的作用便是管理 TiKV 之间的连接，并用于向其它 TiKV 节点发送 Raft 消息。
+/// 和另一个节点建立多个连接，并把不同 Region 的请求均摊到这些连接上
 pub struct RaftClient<S, R, E> {
     pool: Arc<Mutex<ConnectionPool>>,
     cache: LruCache<(u64, usize), CachedQueue>,

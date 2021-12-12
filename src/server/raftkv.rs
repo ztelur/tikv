@@ -360,7 +360,9 @@ where
         }
         write_modifies(&self.engine, modifies)
     }
-
+    // 当调用 RaftKV 的 async_write进行写入操作时，如果 async_write通过回调方式成功返回了，
+    // 说明写入操作已经通过 raft 复制给了大多数副本，并且在 leader 节点（调用者所在 TiKV）完成写入了，
+    // 后续 leader 节点上的读就能够看到之前写入的内容。
     fn async_write(
         &self,
         ctx: &Context,

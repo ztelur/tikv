@@ -1506,6 +1506,7 @@ impl<E: Engine, L: LockManager> Storage<E, L> {
     }
 
     /// Write a raw key to the storage.
+    /// 直接将数据写入到底层kv
     pub fn raw_put(
         &self,
         ctx: Context,
@@ -1536,7 +1537,7 @@ impl<E: Engine, L: LockManager> Storage<E, L> {
 
         let mut batch = WriteData::from_modifies(vec![m]);
         batch.set_allowed_on_disk_almost_full();
-
+        // 写的内容通过 engine 的 async_write接口发送给底层的 KV 存储引擎就好了
         self.engine.async_write(
             &ctx,
             batch,

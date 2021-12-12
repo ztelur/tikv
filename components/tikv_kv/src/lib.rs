@@ -153,6 +153,9 @@ impl<'a> Default for SnapContext<'a> {
 }
 
 /// Engine defines the common behaviour for a storage engine type.
+/// Engine trait 主要提供了读和写两个接口，分别为 async_snapshot和 async_write。
+/// 调用者把要写的内容交给 async_write，async_write通过回调的方式告诉调用者写操作成功完成了或者遇到错误了。
+/// 同样的，async_snapshot通过回调的方式把数据库的快照返回给调用者，供调用者读，或者把遇到的错误返回给调用者。
 pub trait Engine: Send + Clone + 'static {
     type Snap: Snapshot;
     type Local: LocalEngine;

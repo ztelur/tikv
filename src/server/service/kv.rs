@@ -57,6 +57,7 @@ const GRPC_MSG_MAX_BATCH_SIZE: usize = 128;
 const GRPC_MSG_NOTIFY_SIZE: usize = 8;
 
 /// Service handles the RPC messages for the `Tikv` service.
+///
 pub struct Service<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager> {
     store_id: u64,
     /// Used to handle requests related to GC.
@@ -195,6 +196,8 @@ macro_rules! handle_request {
 impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager> Tikv for Service<T, E, L> {
     handle_request!(kv_get, future_get, GetRequest, GetResponse);
     handle_request!(kv_scan, future_scan, ScanRequest, ScanResponse);
+    // 都会调用 future_prewrite函数 并在该函数返回的 future 附加上根据结果发送响应的操作，
+    // 再将得到的 future spawn 到 RpcContext，也就是一个线程池里
     handle_request!(
         kv_prewrite,
         future_prewrite,
@@ -735,13 +738,14 @@ impl<T: RaftStoreRouter<E::Local> + 'static, E: Engine, L: LockManager> Tikv for
                 .await;
         });
     }
-
+    // 接收 snapshot 的位置
     fn snapshot(
         &mut self,
         ctx: RpcContext<'_>,
         stream: RequestStream<SnapshotChunk>,
         sink: ClientStreamingSink<Done>,
     ) {
+        // SnapTask::Recv任务并转发给 snap-worker
         let task = SnapTask::Recv { stream, sink };
         if let Err(e) = self.snap_scheduler.schedule(task) {
             let err_msg = format!("{}", e);

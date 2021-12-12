@@ -38,6 +38,7 @@ const CHECK_CLUSTER_BOOTSTRAPPED_RETRY_SECONDS: u64 = 3;
 
 /// Creates a new storage engine which is backed by the Raft consensus
 /// protocol.
+/// 将 raftstore 的复杂的创建、启动和停止逻辑进行封装的一层
 pub fn create_raft_storage<S, EK, R: FlowStatsReporter>(
     engine: RaftKv<EK, S>,
     cfg: &StorageConfig,
@@ -74,6 +75,7 @@ pub struct Node<C: PdClient + 'static, EK: KvEngine, ER: RaftEngine> {
     store: metapb::Store,
     store_cfg: Arc<VersionTrack<StoreConfig>>,
     api_version: ApiVersion,
+    // raftstore 的核心
     system: RaftBatchSystem<EK, ER>,
     has_started: bool,
 
@@ -166,6 +168,7 @@ where
     /// bootstrapped yet. Then it spawns a thread to run the raftstore in
     /// background.
     #[allow(clippy::too_many_arguments)]
+    // 如果该节点是一个新建的节点，那么会进行 bootstrap 的过程，包括分配 store id、分配第一个 Region 等操作
     pub fn start<T>(
         &mut self,
         engines: Engines<EK, ER>,

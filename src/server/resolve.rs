@@ -16,6 +16,9 @@ use tikv_util::worker::{Runnable, Scheduler, Worker};
 use super::metrics::*;
 use super::Result;
 
+// 在一个集群中，每个 TiKV 实例都由一个唯一的 store id 进行标识。
+// Resolver 的功能是将 store id 解析成 TiKV 的地址和端口，用于建立网络通信。
+
 const STORE_ADDRESS_REFRESH_SECONDS: u64 = 60;
 
 pub type Callback = Box<dyn FnOnce(Result<String>) + Send>;
@@ -27,8 +30,10 @@ pub fn store_address_refresh_interval_secs() -> u64 {
 }
 
 /// A trait for resolving store addresses.
+/// Resolver 的功能是将 store id 解析成 TiKV 的地址和端口，用于建立网络通信。
 pub trait StoreAddrResolver: Send + Clone {
     /// Resolves the address for the specified store id asynchronously.
+    /// callback 为了异步返回结果
     fn resolve(&self, store_id: u64, cb: Callback) -> Result<()>;
 }
 
@@ -50,6 +55,8 @@ struct StoreAddr {
 }
 
 /// A runner for resolving store addresses.
+/// 实现了 Runnable<Task>，其意义是 Runner可以在自己的一个线程里运行，
+/// 外界将会向 Runner发送 Task类型的消息，Runner将对收到的 Task进行处理
 struct Runner<T, RR, E>
 where
     T: PdClient,
@@ -57,6 +64,7 @@ where
     E: KvEngine,
 {
     pd_client: Arc<T>,
+    // 它在执行任务时首先尝试在这个 cache 中找，找不到则向 PD 发送 RPC 请求来进行查询，并将查询结果添加进 cache 里。
     store_addrs: HashMap<u64, StoreAddr>,
     state: Arc<Mutex<GlobalReplicationState>>,
     router: RR,
@@ -179,6 +187,7 @@ where
 }
 
 impl StoreAddrResolver for PdStoreAddrResolver {
+    // 实现则是简单地将查询任务通过其 sched成员发送给 Runner
     fn resolve(&self, store_id: u64, cb: Callback) -> Result<()> {
         let task = Task { store_id, cb };
         box_try!(self.sched.schedule(task));

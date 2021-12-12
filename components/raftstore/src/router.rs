@@ -20,6 +20,10 @@ use crate::store::{
 use crate::{DiscardReason, Error as RaftStoreError, Result as RaftStoreResult};
 
 /// Routes messages to the raftstore.
+/// 将收到的 Raft 消息转发给 raftstore 中对应的 Region
+/// TiKV 实际运行时将会使用的 RaftStoreRouter的实现，
+/// 它包含一个内层的、由 raftstore 提供的 RaftRouter对象和一个 LocalReader对象。
+/// 收到的请求如果是一个只读的请求，则会由 LocalReader处理；其它情况则是交给内层的 router 来处理
 pub trait RaftStoreRouter<EK>:
     StoreRouter<EK> + ProposalRouter<EK::Snapshot> + CasualRouter<EK> + Send + Clone
 where
