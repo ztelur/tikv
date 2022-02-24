@@ -14,7 +14,7 @@ use file_system::{IOOp, IORateLimiter, IOType};
 use kvproto::raft_serverpb::RaftLocalState;
 use raft::eraftpb::Entry;
 use raft_engine::{
-    Command, Engine as RawRaftEngine, Error as RaftEngineError, FileBuilder, LogBatch, MessageExt,
+    Command, Engine as RawRaftEngine, Error as RaftEngineError, env::FileSystem, LogBatch, MessageExt,
 };
 use tikv_util::Either;
 
@@ -89,12 +89,12 @@ impl<W: Seek + Write> Write for ManagedWriter<W> {
     }
 }
 
-struct ManagedFileBuilder {
+struct ManagedFileSystem {
     key_manager: Option<Arc<DataKeyManager>>,
     rate_limiter: Option<Arc<IORateLimiter>>,
 }
 
-impl ManagedFileBuilder {
+impl ManagedFileSystem {
     fn new(
         key_manager: Option<Arc<DataKeyManager>>,
         rate_limiter: Option<Arc<IORateLimiter>>,
@@ -106,7 +106,7 @@ impl ManagedFileBuilder {
     }
 }
 
-impl FileBuilder for ManagedFileBuilder {
+impl FileSystem for ManagedFileSystem {
     type Reader<R: Seek + Read + Send> = ManagedReader<R>;
     type Writer<W: Seek + Write + Send> = ManagedWriter<W>;
 
