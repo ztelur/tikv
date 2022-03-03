@@ -132,6 +132,10 @@ impl<W> EncrypterWriter<W> {
     pub fn finalize(self) -> IoResult<W> {
         self.0.finalize()
     }
+
+    pub fn get_inner(&self) -> &W {
+        &self.0.writer
+    }
 }
 
 impl<W: Write> Write for EncrypterWriter<W> {
