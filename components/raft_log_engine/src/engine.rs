@@ -18,7 +18,6 @@ use raft_engine::{
     MessageExt,
 };
 use tikv_util::Either;
-
 use raft_engine::env::{DefaultFileSystem, Handle, WriteExt};
 pub use raft_engine::{Config as RaftEngineConfig, RecoveryMode};
 
@@ -180,7 +179,7 @@ impl FileSystem for ManagedFileSystem {
         if let Some(ref key_manager) = self.key_manager {
             Ok(ManagedReader {
                 inner: Either::Right(
-                    key_manager.open_file_with_reader(handle.path.clone(), base_reader)?,
+                    key_manager.open_file_with_reader(&handle.path, base_reader)?,
                 ),
                 rate_limiter: self.rate_limiter.clone(),
             })
@@ -200,7 +199,7 @@ impl FileSystem for ManagedFileSystem {
         if let Some(ref key_manager) = self.key_manager {
             Ok(ManagedWriter {
                 inner: Either::Right(key_manager.open_file_with_writer(
-                    handle.path.clone(),
+                    &handle.path,
                     base_writer,
                     false,
                 )?),
