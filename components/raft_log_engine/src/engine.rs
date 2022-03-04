@@ -101,21 +101,21 @@ impl WriteExt for ManagedWriter {
     fn truncate(&self, offset: usize) -> IoResult<()> {
         match self.inner.as_ref() {
             Either::Left(writer) => writer.truncate(offset),
-            Either::Right(writer) => writer.get_inner().truncate(offset),
+            Either::Right(writer) => writer.inner().truncate(offset),
         }
     }
 
     fn sync(&self) -> IoResult<()> {
         match self.inner.as_ref() {
             Either::Left(writer) => writer.sync(),
-            Either::Right(writer) => writer.get_inner().sync(),
+            Either::Right(writer) => writer.inner().sync(),
         }
     }
 
     fn allocate(&self, offset: usize, size: usize) -> IoResult<()> {
         match self.inner.as_ref() {
             Either::Left(writer) => writer.allocate(offset, size),
-            Either::Right(writer) => writer.get_inner().allocate(offset, size),
+            Either::Right(writer) => writer.inner().allocate(offset, size),
         }
     }
 }

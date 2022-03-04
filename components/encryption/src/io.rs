@@ -133,7 +133,7 @@ impl<W> EncrypterWriter<W> {
         self.0.finalize()
     }
 
-    pub fn get_inner(&self) -> &W {
+    pub fn inner(&self) -> &W {
         &self.0.writer
     }
 }
